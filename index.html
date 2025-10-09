@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>VoiceNote - Multi-language Speech to Text</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+      color: #333;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .container {
+      background-color: #fff;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      max-width: 1000px;
+      width: 100%;
+      margin: 2rem;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .header i {
+      font-size: 3rem;
+      color: #0984e3;
+      margin-bottom: 0.5rem;
+    }
+    h1 {
+      text-align: center;
+      color: #4a4a4a;
+      margin-bottom: 0.5rem;
+      font-size: 2.5rem;
+      font-weight: 300;
+    }
+    .subtitle {
+      text-align: center;
+      color: #888;
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+      font-weight: 300;
+    }
+    .voice-icons {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    .voice-icons i {
+      display: none;
+    }
+    .voice-image {
+      display: block;
+      margin: 0 auto 1rem auto;
+      max-width: 150px;
+      opacity: 0.8;
+    }
+    #controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    label {
+      font-weight: bold;
+      margin-right: 0.5rem;
+    }
+    select {
+      font-size: 1rem;
+      padding: 0.75rem;
+      margin: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background-color: #fff;
+      cursor: pointer;
+      transition: border-color 0.3s ease;
+    }
+    select:hover {
+      border-color: #0984e3;
+    }
+    button {
+      font-size: 1rem;
+      padding: 0.75rem 1.5rem;
+      margin: 0.5rem;
+      border: none;
+      border-radius: 5px;
+      background-color: #0984e3;
+      color: #fff;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+      font-weight: bold;
+    }
+    button:hover {
+      background-color: #0652dd;
+      transform: translateY(-2px);
+    }
+    button:active {
+      transform: translateY(0);
+    }
+    #transcript {
+      width: 100%;
+      height: 200px;
+      font-size: 1.1rem;
+      padding: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      resize: none;
+      background-color: #fafafa;
+      line-height: 1.5;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+      transition: border-color 0.3s ease;
+    }
+    #transcript:focus {
+      outline: none;
+      border-color: #0984e3;
+    }
+    #status {
+      text-align: center;
+      margin-top: 1.5rem;
+      font-style: italic;
+      color: #888;
+      font-size: 1rem;
+    }
+    footer {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 0.9rem;
+      color: #aaa;
+      border-top: 1px solid #eee;
+      padding-top: 1rem;
+    }
+    @media (max-width: 768px) {
+      .container {
+        padding: 1rem;
+        margin: 1rem;
+      }
+      h1 {
+        font-size: 2rem;
+      }
+      #controls {
+        flex-direction: column;
+      }
+      select, button {
+        width: 100%;
+        max-width: 300px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>VoiceNote</h1>
+      <p class="subtitle">Multi-language Speech to Text</p>
+      <div class="voice-icons">
+      </div>
+    </div>
+    <!-- Removed the voice icon image as per user request -->
+    <div id="controls">
+      <label for="language"><i class="fas fa-globe"></i> Select Language: </label>
+      <select id="language"></select>
+      <label for="noiseReduction"><input type="checkbox" id="noiseReduction"> Enable Noise Reduction</label>
+      <label for="audioFile"><i class="fas fa-upload"></i> Upload Audio File: <input type="file" id="audioFile" accept="audio/*"></label>
+      <button id="startStopBtn"><i class="fas fa-play"></i> <span>Start</span></button>
+      <button id="saveBtn"><i class="fas fa-save"></i> Save Transcription</button>
+      <button id="copyBtn"><i class="fas fa-copy"></i> Copy</button>
+      <button id="clearBtn"><i class="fas fa-trash-alt"></i> Clear</button>
+    </div>
+    <textarea id="transcript" placeholder="Your speech will appear here..."></textarea>
+    <div id="status"></div>
+    <footer>Powered by Web Speech API</footer>
+  </div>
+
+  <script>
+    // List of languages supported by Web Speech API (common ones)
+    const languages = [
+      { code: 'en-US', name: 'English (United States)' },
+      { code: 'en-GB', name: 'English (United Kingdom)' },
+      { code: 'es-ES', name: 'Spanish (Spain)' },
+      { code: 'fr-FR', name: 'French (France)' },
+      { code: 'de-DE', name: 'German (Germany)' },
+      { code: 'it-IT', name: 'Italian (Italy)' },
+      { code: 'ja-JP', name: 'Japanese (Japan)' },
+      { code: 'zh-CN', name: 'Chinese (Mandarin, Simplified)' },
+      { code: 'zh-TW', name: 'Chinese (Mandarin, Traditional)' },
+      { code: 'ru-RU', name: 'Russian (Russia)' },
+      { code: 'ar-SA', name: 'Arabic (Saudi Arabia)' },
+      { code: 'hi-IN', name: 'Hindi (India)' },
+      { code: 'bn-IN', name: 'Bengali (India)' },
+      { code: 'te-IN', name: 'Telugu (India)' },
+      { code: 'mr-IN', name: 'Marathi (India)' },
+      { code: 'ta-IN', name: 'Tamil (India)' },
+      { code: 'ur-IN', name: 'Urdu (India)' },
+      { code: 'gu-IN', name: 'Gujarati (India)' },
+      { code: 'kn-IN', name: 'Kannada (India)' },
+      { code: 'or-IN', name: 'Odia (India)' },
+      { code: 'ml-IN', name: 'Malayalam (India)' },
+      { code: 'pa-IN', name: 'Punjabi (India)' },
+      { code: 'as-IN', name: 'Assamese (India)' },
+      { code: 'mai-IN', name: 'Maithili (India)' },
+      { code: 'pt-BR', name: 'Portuguese (Brazil)' },
+      { code: 'ko-KR', name: 'Korean (South Korea)' },
+      { code: 'nl-NL', name: 'Dutch (Netherlands)' },
+      { code: 'sv-SE', name: 'Swedish (Sweden)' },
+      { code: 'tr-TR', name: 'Turkish (Turkey)' },
+      { code: 'pl-PL', name: 'Polish (Poland)' },
+      { code: 'he-IL', name: 'Hebrew (Israel)' },
+      { code: 'th-TH', name: 'Thai (Thailand)' },
+      { code: 'vi-VN', name: 'Vietnamese (Vietnam)' },
+      { code: 'fa-IR', name: 'Persian (Iran)' },
+      { code: 'id-ID', name: 'Indonesian (Indonesia)' },
+      { code: 'ms-MY', name: 'Malay (Malaysia)' },
+      { code: 'ro-RO', name: 'Romanian (Romania)' },
+      { code: 'hu-HU', name: 'Hungarian (Hungary)' },
+      { code: 'el-GR', name: 'Greek (Greece)' },
+      { code: 'cs-CZ', name: 'Czech (Czech Republic)' },
+      { code: 'da-DK', name: 'Danish (Denmark)' },
+      { code: 'fi-FI', name: 'Finnish (Finland)' },
+      { code: 'no-NO', name: 'Norwegian (Norway)' }
+    ];
+
+    const languageSelect = document.getElementById('language');
+    const startStopBtn = document.getElementById('startStopBtn');
+    const transcriptArea = document.getElementById('transcript');
+    const statusDiv = document.getElementById('status');
+    const saveBtn = document.getElementById('saveBtn');
+
+    // Populate language dropdown
+    languages.forEach(lang => {
+      const option = document.createElement('option');
+      option.value = lang.code;
+      option.textContent = lang.name;
+      languageSelect.appendChild(option);
+    });
+
+    let recognition;
+    let isRecognizing = false;
+    let audioContext;
+    let filteredStream;
+
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      statusDiv.textContent = 'Sorry, your browser does not support Speech Recognition.';
+      startStopBtn.disabled = true;
+      saveBtn.disabled = true;
+    } else {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        isRecognizing = true;
+        startStopBtn.querySelector('span').textContent = 'Stop';
+        startStopBtn.querySelector('i').className = 'fas fa-stop';
+        statusDiv.textContent = 'Listening...';
+      };
+
+      recognition.onerror = (event) => {
+        statusDiv.textContent = 'Error occurred in recognition: ' + event.error;
+      };
+
+      recognition.onend = () => {
+        isRecognizing = false;
+        startStopBtn.querySelector('span').textContent = 'Start';
+        startStopBtn.querySelector('i').className = 'fas fa-play';
+        statusDiv.textContent = 'Stopped listening.';
+        if (audioContext) {
+          audioContext.close();
+          audioContext = null;
+        }
+        if (filteredStream) {
+          filteredStream.getTracks().forEach(track => track.stop());
+          filteredStream = null;
+        }
+      };
+
+      recognition.onresult = (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        transcriptArea.value = finalTranscript + interimTranscript;
+      };
+    }
+
+    startStopBtn.addEventListener('click', async () => {
+      if (isRecognizing) {
+        recognition.stop();
+        if (audioContext) {
+          audioContext.close();
+          audioContext = null;
+        }
+        if (filteredStream) {
+          filteredStream.getTracks().forEach(track => track.stop());
+          filteredStream = null;
+        }
+      } else {
+        recognition.lang = languageSelect.value;
+        transcriptArea.value = '';
+
+        if (document.getElementById('noiseReduction').checked) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioContext.createMediaStreamSource(stream);
+
+            // High-pass filter to remove low-frequency noise (e.g., rumble)
+            const highPassFilter = audioContext.createBiquadFilter();
+            highPassFilter.type = 'highpass';
+            highPassFilter.frequency.value = 80;
+
+            // Low-pass filter to remove high-frequency noise (e.g., hiss)
+            const lowPassFilter = audioContext.createBiquadFilter();
+            lowPassFilter.type = 'lowpass';
+            lowPassFilter.frequency.value = 3400;
+
+            // Compressor to even out volume and reduce dynamic noise
+            const compressor = audioContext.createDynamicsCompressor();
+            compressor.threshold.value = -24;
+            compressor.knee.value = 30;
+            compressor.ratio.value = 12;
+            compressor.attack.value = 0.003;
+            compressor.release.value = 0.25;
+
+            // Chain the filters: source -> highPass -> lowPass -> compressor -> destination
+            source.connect(highPassFilter);
+            highPassFilter.connect(lowPassFilter);
+            lowPassFilter.connect(compressor);
+
+            const destination = audioContext.createMediaStreamDestination();
+            compressor.connect(destination);
+            filteredStream = destination.stream;
+
+            // If browser supports, set the filtered audio track
+            if ('audioTrack' in recognition) {
+              recognition.audioTrack = filteredStream.getAudioTracks()[0];
+            } else {
+              statusDiv.textContent = 'Noise reduction not supported in this browser.';
+            }
+          } catch (error) {
+            statusDiv.textContent = 'Error accessing microphone for noise reduction: ' + error.message;
+            return;
+          }
+        }
+
+        recognition.start();
+      }
+    });
+
+    saveBtn.addEventListener('click', () => {
+      const text = transcriptArea.value.trim();
+      if (!text) {
+        alert('No transcription to save.');
+        return;
+      }
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'transcription.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    const copyBtn = document.getElementById('copyBtn');
+    const clearBtn = document.getElementById('clearBtn');
+
+    copyBtn.addEventListener('click', () => {
+      const text = transcriptArea.value.trim();
+      if (!text) {
+        alert('No transcription to copy.');
+        return;
+      }
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Transcription copied to clipboard.');
+      }).catch(() => {
+        alert('Failed to copy transcription.');
+      });
+    });
+
+    clearBtn.addEventListener('click', () => {
+      if (confirm('Are you sure you want to clear the transcription?')) {
+        transcriptArea.value = '';
+      }
+    });
+  </script>
+
+  <script>
+    // Audio file upload and speech recognition
+    const audioFileInput = document.getElementById('audioFile');
+    let audioElement = null;
+    let fileAudioContext = null;
+    let fileStream = null;
+
+    audioFileInput.addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) {
+        return;
+      }
+      if (audioElement) {
+        audioElement.pause();
+        audioElement.src = '';
+        audioElement = null;
+      }
+      if (fileAudioContext) {
+        fileAudioContext.close();
+        fileAudioContext = null;
+      }
+      if (fileStream) {
+        fileStream.getTracks().forEach(track => track.stop());
+        fileStream = null;
+      }
+
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        fileAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuffer = await fileAudioContext.decodeAudioData(arrayBuffer);
+
+        const source = fileAudioContext.createBufferSource();
+        source.buffer = audioBuffer;
+
+        const destination = fileAudioContext.createMediaStreamDestination();
+        source.connect(destination);
+        fileStream = destination.stream;
+
+        // Create audio element for playback
+        const url = URL.createObjectURL(file);
+        audioElement = new Audio(url);
+        audioElement.controls = true;
+        audioElement.autoplay = false;
+        audioElement.style.display = 'block';
+        audioElement.style.margin = '1rem auto';
+        document.querySelector('.container').appendChild(audioElement);
+
+        // Attempt to set the file stream to recognition if supported
+        if ('audioTrack' in recognition) {
+          recognition.audioTrack = fileStream.getAudioTracks()[0];
+          statusDiv.textContent = 'Audio file loaded. Click Start to transcribe.';
+        } else {
+          statusDiv.textContent = 'Audio playback ready. Speech-to-text from audio file may not be supported in this browser.';
+        }
+
+        // Play the file when recognition starts (if supported)
+        source.start(0);
+      } catch (error) {
+        statusDiv.textContent = 'Error loading audio file: ' + error.message;
+      }
+    });
+  </script>
+</body>
+</html>
