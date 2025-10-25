@@ -6,6 +6,9 @@
   <title>VoiceNote - Multi-language Speech to Text</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
+    * {
+      box-sizing: border-box;
+    }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
@@ -22,9 +25,12 @@
       padding: 2rem;
       border-radius: 10px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-      max-width: 1000px;
-      width: 100%;
-      margin: 2rem;
+      width: min(90vw, 800px);
+      height: 800px;
+      margin: 2rem auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
     }
     .header {
       text-align: center;
@@ -64,10 +70,11 @@
     }
     #controls {
       display: flex;
-      justify-content: center;
-      align-items: center;
-      margin-bottom: 1.5rem;
       flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      align-items: center;
     }
     label {
       font-weight: bold;
@@ -107,7 +114,7 @@
     }
     #transcript {
       width: 100%;
-      height: 200px;
+      height: 500px;
       font-size: 1.1rem;
       padding: 1rem;
       border: 1px solid #ddd;
@@ -117,6 +124,7 @@
       line-height: 1.5;
       box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
       transition: border-color 0.3s ease;
+      overflow: hidden;
     }
     #transcript:focus {
       outline: none;
@@ -147,6 +155,7 @@
       }
       #controls {
         flex-direction: column;
+        gap: 0.5rem;
       }
       select, button {
         width: 100%;
@@ -159,7 +168,7 @@
   <div class="container">
     <div class="header">
       <h1>VoiceNote</h1>
-      <p class="subtitle">Multi-language Speech to Text</p>
+      <p class="subtitle">Optimized for Telugu and Tamil Speech to Text</p>
       <div class="voice-icons">
       </div>
     </div>
@@ -167,9 +176,10 @@
     <div id="controls">
       <label for="language"><i class="fas fa-globe"></i> Select Language: </label>
       <select id="language"></select>
-      <label for="noiseReduction"><input type="checkbox" id="noiseReduction"> Enable Noise Reduction</label>
-      <label for="audioFile"><i class="fas fa-upload"></i> Upload Audio File: <input type="file" id="audioFile" accept="audio/*"></label>
-      <button id="startStopBtn"><i class="fas fa-play"></i> <span>Start</span></button>
+<label for="noiseReduction" style="display: none;"><input type="checkbox" id="noiseReduction"> Enable Noise Reduction</label>
+<label for="audioFile" style="display: none;"><i class="fas fa-upload"></i> Upload Audio File: <input type="file" id="audioFile" accept="audio/*"></label>
+<label for="editMode"><input type="checkbox" id="editMode"> Edit Mode (Pause Auto-Update for Corrections)</label>
+<button id="startStopBtn"><i class="fas fa-play"></i> <span>Start</span></button>
       <button id="saveBtn"><i class="fas fa-save"></i> Save Transcription</button>
       <button id="copyBtn"><i class="fas fa-copy"></i> Copy</button>
       <button id="clearBtn"><i class="fas fa-trash-alt"></i> Clear</button>
@@ -180,8 +190,10 @@
   </div>
 
   <script>
-    // List of languages supported by Web Speech API (common ones)
+    // List of languages supported by Web Speech API (common ones), prioritized for Telugu and Tamil
     const languages = [
+      { code: 'te-IN', name: 'Telugu (India)' },
+      { code: 'ta-IN', name: 'Tamil (India)' },
       { code: 'en-US', name: 'English (United States)' },
       { code: 'en-GB', name: 'English (United Kingdom)' },
       { code: 'es-ES', name: 'Spanish (Spain)' },
@@ -195,9 +207,7 @@
       { code: 'ar-SA', name: 'Arabic (Saudi Arabia)' },
       { code: 'hi-IN', name: 'Hindi (India)' },
       { code: 'bn-IN', name: 'Bengali (India)' },
-      { code: 'te-IN', name: 'Telugu (India)' },
       { code: 'mr-IN', name: 'Marathi (India)' },
-      { code: 'ta-IN', name: 'Tamil (India)' },
       { code: 'ur-IN', name: 'Urdu (India)' },
       { code: 'gu-IN', name: 'Gujarati (India)' },
       { code: 'kn-IN', name: 'Kannada (India)' },
@@ -240,6 +250,9 @@
       option.textContent = lang.name;
       languageSelect.appendChild(option);
     });
+
+    // Set default language to Telugu
+    languageSelect.value = 'te-IN';
 
     let recognition;
     let isRecognizing = false;
@@ -292,7 +305,9 @@
             interimTranscript += event.results[i][0].transcript;
           }
         }
-        transcriptArea.value = finalTranscript + interimTranscript;
+        if (!document.getElementById('editMode').checked) {
+          transcriptArea.value = finalTranscript + interimTranscript;
+        }
       };
     }
 
