@@ -12,13 +12,14 @@
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
-      padding: 0;
+      padding: 1rem 0; /* ADDED vertical padding to ensure content can scroll */
       background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
       color: #333;
       min-height: 100vh;
       display: flex;
       justify-content: center;
-      align-items: center;
+      /* CHANGE: Align to the start to allow scrolling */
+      align-items: flex-start; 
     }
     .container {
       background-color: #fff;
@@ -26,7 +27,9 @@
       border-radius: 10px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
       width: min(90vw, 800px);
-      min-height: 800px;
+      /* CHANGE: Use auto-height to fit content properly */
+      min-height: auto; 
+      height: auto;
       margin: 2rem auto;
       display: flex;
       flex-direction: column;
@@ -114,7 +117,10 @@
     }
     #transcript {
       width: 100%;
-      height: 500px;
+      /* CHANGE: Reduced height from 500px to better fit on all screens */
+      height: 350px; 
+      /* NEW: Allows the textarea to grow if extra space is available */
+      flex-grow: 1; 
       font-size: 1.1rem;
       padding: 1rem;
       border: 1px solid #ddd;
@@ -147,7 +153,8 @@
     }
     @media (max-width: 768px) {
       body {
-        display: block;
+        /* Ensure scrolling is enabled for the entire page */
+        display: block; 
         overflow-y: auto;
         padding: 1rem;
       }
@@ -172,8 +179,9 @@
         max-width: 300px;
         margin: 0.25rem auto;
       }
+      /* CHANGE: Reduced height from 60vh to 35vh for better visibility of footer */
       #transcript {
-        height: 60vh;
+        height: 35vh; 
       }
     }
   </style>
@@ -186,17 +194,16 @@
       <div class="voice-icons">
       </div>
     </div>
-    <!-- Removed the voice icon image as per user request -->
     <div id="controls">
       <label for="language"><i class="fas fa-globe"></i> Select Language: </label>
       <select id="language"></select>
       <label for="translateLanguage"><i class="fas fa-language"></i> Translate to: </label>
       <select id="translateLanguage"></select>
-<label for="noiseReduction" style="display: none;"><input type="checkbox" id="noiseReduction"> Enable Noise Reduction</label>
-<label for="audioFile" style="display: none;"><i class="fas fa-upload"></i> Upload Audio File: <input type="file" id="audioFile" accept="audio/*"></label>
+      <label for="noiseReduction" style="display: none;"><input type="checkbox" id="noiseReduction"> Enable Noise Reduction</label>
+      <label for="audioFile" style="display: none;"><i class="fas fa-upload"></i> Upload Audio File: <input type="file" id="audioFile" accept="audio/*"></label>
 
-<button id="startBtn"><i class="fas fa-play"></i> Start</button>
-<button id="stopBtn" disabled><i class="fas fa-stop"></i> Stop</button>
+      <button id="startBtn"><i class="fas fa-play"></i> Start</button>
+      <button id="stopBtn" disabled><i class="fas fa-stop"></i> Stop</button>
       <button id="translateBtn"><i class="fas fa-exchange-alt"></i> Translate</button>
       <button id="saveBtn"><i class="fas fa-save"></i> Save Transcription</button>
       <button id="copyBtn"><i class="fas fa-copy"></i> Copy</button>
@@ -389,7 +396,7 @@
           if ('audioTrack' in recognition) {
             recognition.audioTrack = filteredStream.getAudioTracks()[0];
           } else {
-            statusDiv.textContent = 'Noise reduction not supported in this browser.';
+            statusDiv.textContent = 'Noise reduction not fully supported in this browser, starting without it.';
           }
         } catch (error) {
           statusDiv.textContent = 'Error accessing microphone for noise reduction: ' + error.message;
@@ -442,7 +449,7 @@
       navigator.clipboard.writeText(text).then(() => {
         alert('Transcription copied to clipboard.');
       }).catch(() => {
-        alert('Failed to copy transcription.');
+        alert('Failed to copy transcription. Please copy manually.');
       });
     });
 
@@ -454,11 +461,13 @@
 
     // Translation function using Google Translate API (unofficial)
     async function translateText(text, sourceLang, targetLang) {
+      // NOTE: This endpoint is unofficial and may stop working without notice.
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
       try {
         const response = await fetch(url);
         const data = await response.json();
-        return data[0][0][0];
+        // The translated text is usually the first element of the first array of the main array
+        return data[0][0][0]; 
       } catch (error) {
         console.error('Translation error:', error);
         return null;
@@ -471,19 +480,23 @@
         alert('No text to translate.');
         return;
       }
-      const sourceLang = languageSelect.value.split('-')[0]; // Extract language code (e.g., 'te' from 'te-IN')
+      // Extract language code (e.g., 'te' from 'te-IN') for the translate API
+      const sourceLang = languageSelect.value.split('-')[0]; 
       const targetLang = translateLanguageSelect.value.split('-')[0];
+      
       if (sourceLang === targetLang) {
         statusDiv.textContent = 'Source and target languages are the same. No translation needed.';
         return;
       }
       statusDiv.textContent = 'Translating...';
       const translatedText = await translateText(text, sourceLang, targetLang);
+      
       if (translatedText) {
+        // Display the translated text in the transcript area
         transcriptArea.value = translatedText;
-        statusDiv.textContent = 'Translation completed.';
+        statusDiv.textContent = `Translation from ${sourceLang.toUpperCase()} to ${targetLang.toUpperCase()} completed.`;
       } else {
-        statusDiv.textContent = 'Translation failed. Please try again.';
+        statusDiv.textContent = 'Translation failed. Please try again or check console for errors.';
       }
     });
   </script>
@@ -500,9 +513,11 @@
       if (!file) {
         return;
       }
+      
+      // Cleanup previous streams/elements
       if (audioElement) {
         audioElement.pause();
-        audioElement.src = '';
+        audioElement.remove();
         audioElement = null;
       }
       if (fileAudioContext) {
@@ -532,19 +547,29 @@
         audioElement.controls = true;
         audioElement.autoplay = false;
         audioElement.style.display = 'block';
-        audioElement.style.margin = '1rem auto';
-        document.querySelector('.container').appendChild(audioElement);
+        audioElement.style.width = '100%';
+        audioElement.style.margin = '1rem auto 0 auto';
+        document.querySelector('.container').insertBefore(audioElement, document.getElementById('transcript'));
 
         // Attempt to set the file stream to recognition if supported
         if ('audioTrack' in recognition) {
           recognition.audioTrack = fileStream.getAudioTracks()[0];
           statusDiv.textContent = 'Audio file loaded. Click Start to transcribe.';
+          
+          // Connect the stream source to recognition and start playback (which feeds recognition)
+          startBtn.addEventListener('click', () => {
+              // The stream is started when the file is loaded, but playback starts here.
+              // Note: Direct file transcription via Web Speech API is experimental 
+              // and often not fully supported by browsers.
+              if (source && fileAudioContext.state === 'suspended') {
+                  fileAudioContext.resume();
+              }
+          }, { once: true }); // Only set this handler once per file load
+          
         } else {
-          statusDiv.textContent = 'Audio playback ready. Speech-to-text from audio file may not be supported in this browser.';
+          statusDiv.textContent = 'Audio playback ready. Note: Direct Speech-to-text from an uploaded audio file is not widely supported in this browser.';
         }
 
-        // Play the file when recognition starts (if supported)
-        source.start(0);
       } catch (error) {
         statusDiv.textContent = 'Error loading audio file: ' + error.message;
       }
