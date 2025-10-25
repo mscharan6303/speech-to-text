@@ -1,6 +1,7 @@
-- [x] Add readonly attribute to textarea in index.html to prevent user editing of transcribed text
-- [x] Add translation language select dropdown in controls section
-- [x] Add Translate button in controls section
-- [x] Implement JavaScript function for translation using Google Translate API
-- [x] Add event listener for Translate button
-- [x] Test the translation feature
+- [x] Add global variable 'shouldStop' to control manual stopping
+- [x] Modify startStopBtn click event: set shouldStop=true when stopping
+- [x] Modify recognition.onend: restart recognition if !shouldStop
+- [x] Set shouldStop=false when starting recognition
+- [ ] Replace toggle button with separate Start and Stop buttons
+- [ ] Update JS to handle separate buttons
+- [ ] Test continuous listening until stop button is clicked

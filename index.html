@@ -181,7 +181,8 @@
 <label for="noiseReduction" style="display: none;"><input type="checkbox" id="noiseReduction"> Enable Noise Reduction</label>
 <label for="audioFile" style="display: none;"><i class="fas fa-upload"></i> Upload Audio File: <input type="file" id="audioFile" accept="audio/*"></label>
 
-<button id="startStopBtn"><i class="fas fa-play"></i> <span>Start</span></button>
+<button id="startBtn"><i class="fas fa-play"></i> Start</button>
+<button id="stopBtn" disabled><i class="fas fa-stop"></i> Stop</button>
       <button id="translateBtn"><i class="fas fa-exchange-alt"></i> Translate</button>
       <button id="saveBtn"><i class="fas fa-save"></i> Save Transcription</button>
       <button id="copyBtn"><i class="fas fa-copy"></i> Copy</button>
@@ -242,7 +243,8 @@
 
     const languageSelect = document.getElementById('language');
     const translateLanguageSelect = document.getElementById('translateLanguage');
-    const startStopBtn = document.getElementById('startStopBtn');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
     const translateBtn = document.getElementById('translateBtn');
     const transcriptArea = document.getElementById('transcript');
     const statusDiv = document.getElementById('status');
@@ -271,12 +273,14 @@
 
     let recognition;
     let isRecognizing = false;
+    let shouldStop = false;
     let audioContext;
     let filteredStream;
 
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       statusDiv.textContent = 'Sorry, your browser does not support Speech Recognition.';
-      startStopBtn.disabled = true;
+      startBtn.disabled = true;
+      stopBtn.disabled = true;
       saveBtn.disabled = true;
     } else {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -286,8 +290,8 @@
 
       recognition.onstart = () => {
         isRecognizing = true;
-        startStopBtn.querySelector('span').textContent = 'Stop';
-        startStopBtn.querySelector('i').className = 'fas fa-stop';
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
         statusDiv.textContent = 'Listening...';
       };
 
@@ -296,17 +300,22 @@
       };
 
       recognition.onend = () => {
-        isRecognizing = false;
-        startStopBtn.querySelector('span').textContent = 'Start';
-        startStopBtn.querySelector('i').className = 'fas fa-play';
-        statusDiv.textContent = 'Stopped listening.';
-        if (audioContext) {
-          audioContext.close();
-          audioContext = null;
-        }
-        if (filteredStream) {
-          filteredStream.getTracks().forEach(track => track.stop());
-          filteredStream = null;
+        if (shouldStop) {
+          isRecognizing = false;
+          startBtn.disabled = false;
+          stopBtn.disabled = true;
+          statusDiv.textContent = 'Stopped listening.';
+          if (audioContext) {
+            audioContext.close();
+            audioContext = null;
+          }
+          if (filteredStream) {
+            filteredStream.getTracks().forEach(track => track.stop());
+            filteredStream = null;
+          }
+        } else {
+          // Restart recognition if not manually stopped
+          recognition.start();
         }
       };
 
@@ -324,67 +333,69 @@
       };
     }
 
-    startStopBtn.addEventListener('click', async () => {
-      if (isRecognizing) {
-        recognition.stop();
-        if (audioContext) {
-          audioContext.close();
-          audioContext = null;
-        }
-        if (filteredStream) {
-          filteredStream.getTracks().forEach(track => track.stop());
-          filteredStream = null;
-        }
-      } else {
-        recognition.lang = languageSelect.value;
-        transcriptArea.value = '';
+    startBtn.addEventListener('click', async () => {
+      shouldStop = false;
+      recognition.lang = languageSelect.value;
+      transcriptArea.value = '';
 
-        if (document.getElementById('noiseReduction').checked) {
-          try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const source = audioContext.createMediaStreamSource(stream);
+      if (document.getElementById('noiseReduction').checked) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const source = audioContext.createMediaStreamSource(stream);
 
-            // High-pass filter to remove low-frequency noise (e.g., rumble)
-            const highPassFilter = audioContext.createBiquadFilter();
-            highPassFilter.type = 'highpass';
-            highPassFilter.frequency.value = 80;
+          // High-pass filter to remove low-frequency noise (e.g., rumble)
+          const highPassFilter = audioContext.createBiquadFilter();
+          highPassFilter.type = 'highpass';
+          highPassFilter.frequency.value = 80;
 
-            // Low-pass filter to remove high-frequency noise (e.g., hiss)
-            const lowPassFilter = audioContext.createBiquadFilter();
-            lowPassFilter.type = 'lowpass';
-            lowPassFilter.frequency.value = 3400;
+          // Low-pass filter to remove high-frequency noise (e.g., hiss)
+          const lowPassFilter = audioContext.createBiquadFilter();
+          lowPassFilter.type = 'lowpass';
+          lowPassFilter.frequency.value = 3400;
 
-            // Compressor to even out volume and reduce dynamic noise
-            const compressor = audioContext.createDynamicsCompressor();
-            compressor.threshold.value = -24;
-            compressor.knee.value = 30;
-            compressor.ratio.value = 12;
-            compressor.attack.value = 0.003;
-            compressor.release.value = 0.25;
+          // Compressor to even out volume and reduce dynamic noise
+          const compressor = audioContext.createDynamicsCompressor();
+          compressor.threshold.value = -24;
+          compressor.knee.value = 30;
+          compressor.ratio.value = 12;
+          compressor.attack.value = 0.003;
+          compressor.release.value = 0.25;
 
-            // Chain the filters: source -> highPass -> lowPass -> compressor -> destination
-            source.connect(highPassFilter);
-            highPassFilter.connect(lowPassFilter);
-            lowPassFilter.connect(compressor);
+          // Chain the filters: source -> highPass -> lowPass -> compressor -> destination
+          source.connect(highPassFilter);
+          highPassFilter.connect(lowPassFilter);
+          lowPassFilter.connect(compressor);
 
-            const destination = audioContext.createMediaStreamDestination();
-            compressor.connect(destination);
-            filteredStream = destination.stream;
+          const destination = audioContext.createMediaStreamDestination();
+          compressor.connect(destination);
+          filteredStream = destination.stream;
 
-            // If browser supports, set the filtered audio track
-            if ('audioTrack' in recognition) {
-              recognition.audioTrack = filteredStream.getAudioTracks()[0];
-            } else {
-              statusDiv.textContent = 'Noise reduction not supported in this browser.';
-            }
-          } catch (error) {
-            statusDiv.textContent = 'Error accessing microphone for noise reduction: ' + error.message;
-            return;
+          // If browser supports, set the filtered audio track
+          if ('audioTrack' in recognition) {
+            recognition.audioTrack = filteredStream.getAudioTracks()[0];
+          } else {
+            statusDiv.textContent = 'Noise reduction not supported in this browser.';
           }
+        } catch (error) {
+          statusDiv.textContent = 'Error accessing microphone for noise reduction: ' + error.message;
+          return;
         }
+      }
 
-        recognition.start();
+      recognition.start();
+    });
+
+    stopBtn.addEventListener('click', () => {
+      shouldStop = true;
+      recognition.stop();
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+      if (filteredStream) {
+        filteredStream.getTracks().forEach(track => track.stop());
+        filteredStream = null;
       }
     });
 
