@@ -295,10 +295,11 @@
     let recognition;
     let isRecognizing = false;
     let shouldStop = false;
-    let isRestarting = false;
     let audioContext;
     let filteredStream;
     let accumulatedTranscript = '';
+    let silenceTimeout = 60000; // 1 minute in milliseconds
+    let silenceTimer;
 
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       statusDiv.textContent = 'Sorry, your browser does not support Speech Recognition.';
@@ -315,10 +316,11 @@
         isRecognizing = true;
         startBtn.disabled = true;
         stopBtn.disabled = false;
-        if (!isRestarting) {
-          statusDiv.textContent = 'Listening continuously...';
-        }
-        isRestarting = false;
+        statusDiv.textContent = 'Listening...';
+        // Start the silence timer
+        silenceTimer = setTimeout(() => {
+          recognition.stop();
+        }, silenceTimeout);
       };
 
       recognition.onerror = (event) => {
@@ -326,6 +328,12 @@
       };
 
       recognition.onend = () => {
+        // Clear the silence timer if it exists
+        if (silenceTimer) {
+          clearTimeout(silenceTimer);
+          silenceTimer = null;
+        }
+
         if (shouldStop) {
           isRecognizing = false;
           startBtn.disabled = false;
@@ -340,13 +348,29 @@
             filteredStream = null;
           }
         } else {
-          // Restart recognition if not manually stopped
-          isRestarting = true;
-          recognition.start();
+          // If ended due to silence timeout, don't restart
+          if (silenceTimer === null) {
+            statusDiv.textContent = 'Stopped due to silence.';
+            isRecognizing = false;
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+          } else {
+            // Restart recognition if not manually stopped and not due to silence
+            recognition.start();
+          }
         }
       };
 
       recognition.onresult = (event) => {
+        // Clear the silence timer on any speech activity
+        if (silenceTimer) {
+          clearTimeout(silenceTimer);
+        }
+        // Restart the silence timer
+        silenceTimer = setTimeout(() => {
+          recognition.stop();
+        }, silenceTimeout);
+
         let interimTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
