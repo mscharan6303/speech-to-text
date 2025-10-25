@@ -298,9 +298,6 @@
     let audioContext;
     let filteredStream;
     let accumulatedTranscript = '';
-    let silenceTimeout = 60000; // 1 minute in milliseconds
-    let silenceTimer;
-    let lastResultIndex = 0;
 
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       statusDiv.textContent = 'Sorry, your browser does not support Speech Recognition.';
@@ -318,10 +315,6 @@
         startBtn.disabled = true;
         stopBtn.disabled = false;
         statusDiv.textContent = 'Listening...';
-        // Start the silence timer
-        silenceTimer = setTimeout(() => {
-          recognition.stop();
-        }, silenceTimeout);
       };
 
       recognition.onerror = (event) => {
@@ -329,12 +322,6 @@
       };
 
       recognition.onend = () => {
-        // Clear the silence timer if it exists
-        if (silenceTimer) {
-          clearTimeout(silenceTimer);
-          silenceTimer = null;
-        }
-
         if (shouldStop) {
           isRecognizing = false;
           startBtn.disabled = false;
@@ -349,35 +336,16 @@
             filteredStream = null;
           }
         } else {
-          // If ended due to silence timeout, don't restart
-          if (silenceTimer === null) {
-            statusDiv.textContent = 'Stopped due to silence.';
-            isRecognizing = false;
-            startBtn.disabled = false;
-            stopBtn.disabled = true;
-          } else {
-            // Restart recognition if not manually stopped and not due to silence
-            recognition.start();
-          }
+          // Restart recognition if not manually stopped
+          recognition.start();
         }
       };
 
       recognition.onresult = (event) => {
-        // Clear the silence timer on any speech activity
-        if (silenceTimer) {
-          clearTimeout(silenceTimer);
-        }
-        // Restart the silence timer
-        silenceTimer = setTimeout(() => {
-          recognition.stop();
-        }, silenceTimeout);
-
         let interimTranscript = '';
-        // Only process results from the last result index to avoid duplicates
-        for (let i = Math.max(lastResultIndex, event.resultIndex); i < event.results.length; ++i) {
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
             accumulatedTranscript += event.results[i][0].transcript;
-            lastResultIndex = i + 1; // Update last processed index
           } else {
             interimTranscript += event.results[i][0].transcript;
           }
@@ -391,7 +359,6 @@
       recognition.lang = languageSelect.value;
       accumulatedTranscript = '';
       transcriptArea.value = '';
-      lastResultIndex = 0; // Reset the result index on start
 
       if (document.getElementById('noiseReduction').checked) {
         try {
@@ -496,7 +463,7 @@
     // Translation function using Google Translate API (unofficial)
     async function translateText(text, sourceLang, targetLang) {
       // NOTE: This endpoint is unofficial and may stop working without notice.
-      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+      const url = https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)};
       try {
         const response = await fetch(url);
         const data = await response.json();
@@ -532,7 +499,7 @@
       if (translatedText) {
         // Display the translated text in the transcript area
         transcriptArea.value = translatedText;
-        statusDiv.textContent = `Translation from ${sourceLang.toUpperCase()} to ${targetLang.toUpperCase()} completed.`;
+        statusDiv.textContent = Translation from ${sourceLang.toUpperCase()} to ${targetLang.toUpperCase()} completed.;
       } else {
         statusDiv.textContent = 'Translation failed. Please try again or check console for errors.';
       }
