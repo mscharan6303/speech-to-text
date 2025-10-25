@@ -295,6 +295,7 @@
     let recognition;
     let isRecognizing = false;
     let shouldStop = false;
+    let isRestarting = false;
     let audioContext;
     let filteredStream;
     let accumulatedTranscript = '';
@@ -314,7 +315,10 @@
         isRecognizing = true;
         startBtn.disabled = true;
         stopBtn.disabled = false;
-        statusDiv.textContent = 'Listening...';
+        if (!isRestarting) {
+          statusDiv.textContent = 'Listening continuously...';
+        }
+        isRestarting = false;
       };
 
       recognition.onerror = (event) => {
@@ -337,6 +341,7 @@
           }
         } else {
           // Restart recognition if not manually stopped
+          isRestarting = true;
           recognition.start();
         }
       };
