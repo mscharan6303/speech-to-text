@@ -297,6 +297,7 @@
     let shouldStop = false;
     let audioContext;
     let filteredStream;
+    let accumulatedTranscript = '';
 
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       statusDiv.textContent = 'Sorry, your browser does not support Speech Recognition.';
@@ -342,21 +343,21 @@
 
       recognition.onresult = (event) => {
         let interimTranscript = '';
-        let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
+            accumulatedTranscript += event.results[i][0].transcript;
           } else {
             interimTranscript += event.results[i][0].transcript;
           }
         }
-        transcriptArea.value = finalTranscript + interimTranscript;
+        transcriptArea.value = accumulatedTranscript + interimTranscript;
       };
     }
 
     startBtn.addEventListener('click', async () => {
       shouldStop = false;
       recognition.lang = languageSelect.value;
+      accumulatedTranscript = '';
       transcriptArea.value = '';
 
       if (document.getElementById('noiseReduction').checked) {
@@ -475,22 +476,26 @@
     }
 
     translateBtn.addEventListener('click', async () => {
+      if (!navigator.onLine) {
+        statusDiv.textContent = 'No internet connection. Translation requires internet.';
+        return;
+      }
       const text = transcriptArea.value.trim();
       if (!text) {
         alert('No text to translate.');
         return;
       }
       // Extract language code (e.g., 'te' from 'te-IN') for the translate API
-      const sourceLang = languageSelect.value.split('-')[0]; 
+      const sourceLang = languageSelect.value.split('-')[0];
       const targetLang = translateLanguageSelect.value.split('-')[0];
-      
+
       if (sourceLang === targetLang) {
         statusDiv.textContent = 'Source and target languages are the same. No translation needed.';
         return;
       }
       statusDiv.textContent = 'Translating...';
       const translatedText = await translateText(text, sourceLang, targetLang);
-      
+
       if (translatedText) {
         // Display the translated text in the transcript area
         transcriptArea.value = translatedText;

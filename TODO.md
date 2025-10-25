@@ -2,6 +2,10 @@
 - [x] Modify startStopBtn click event: set shouldStop=true when stopping
 - [x] Modify recognition.onend: restart recognition if !shouldStop
 - [x] Set shouldStop=false when starting recognition
-- [ ] Replace toggle button with separate Start and Stop buttons
-- [ ] Update JS to handle separate buttons
-- [ ] Test continuous listening until stop button is clicked
+- [x] Replace toggle button with separate Start and Stop buttons
+- [x] Update JS to handle separate buttons
+- [x] Add accumulatedTranscript variable to accumulate final results
+- [x] Modify onresult to accumulate final transcripts
+- [x] Reset accumulatedTranscript on start
+- [x] Test continuous listening until stop button is clicked
+- [x] Add internet connection check for translation feature
