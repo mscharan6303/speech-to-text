@@ -300,6 +300,7 @@
     let accumulatedTranscript = '';
     let silenceTimeout = 60000; // 1 minute in milliseconds
     let silenceTimer;
+    let lastResultIndex = 0;
 
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       statusDiv.textContent = 'Sorry, your browser does not support Speech Recognition.';
@@ -372,9 +373,11 @@
         }, silenceTimeout);
 
         let interimTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
+        // Only process results from the last result index to avoid duplicates
+        for (let i = Math.max(lastResultIndex, event.resultIndex); i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
             accumulatedTranscript += event.results[i][0].transcript;
+            lastResultIndex = i + 1; // Update last processed index
           } else {
             interimTranscript += event.results[i][0].transcript;
           }
@@ -388,6 +391,7 @@
       recognition.lang = languageSelect.value;
       accumulatedTranscript = '';
       transcriptArea.value = '';
+      lastResultIndex = 0; // Reset the result index on start
 
       if (document.getElementById('noiseReduction').checked) {
         try {
