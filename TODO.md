@@ -1,1 +1,6 @@
 - [x] Add readonly attribute to textarea in index.html to prevent user editing of transcribed text
+- [x] Add translation language select dropdown in controls section
+- [x] Add Translate button in controls section
+- [x] Implement JavaScript function for translation using Google Translate API
+- [x] Add event listener for Translate button
+- [x] Test the translation feature
