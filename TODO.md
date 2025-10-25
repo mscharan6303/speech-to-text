@@ -15,3 +15,4 @@
 - [x] Increase transcription box height to 400px for better usability
 - [x] Increase container height to 800px to accommodate larger transcription box
 - [x] Remove scroll for transcript and increase textarea size to 500px with overflow: hidden
+- [x] Remove edit mode checkbox entirely

@@ -178,7 +178,7 @@
       <select id="language"></select>
 <label for="noiseReduction" style="display: none;"><input type="checkbox" id="noiseReduction"> Enable Noise Reduction</label>
 <label for="audioFile" style="display: none;"><i class="fas fa-upload"></i> Upload Audio File: <input type="file" id="audioFile" accept="audio/*"></label>
-<label for="editMode"><input type="checkbox" id="editMode"> Edit Mode (Pause Auto-Update for Corrections)</label>
+
 <button id="startStopBtn"><i class="fas fa-play"></i> <span>Start</span></button>
       <button id="saveBtn"><i class="fas fa-save"></i> Save Transcription</button>
       <button id="copyBtn"><i class="fas fa-copy"></i> Copy</button>
@@ -305,9 +305,7 @@
             interimTranscript += event.results[i][0].transcript;
           }
         }
-        if (!document.getElementById('editMode').checked) {
-          transcriptArea.value = finalTranscript + interimTranscript;
-        }
+        transcriptArea.value = finalTranscript + interimTranscript;
       };
     }
 
