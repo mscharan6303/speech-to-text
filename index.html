@@ -271,26 +271,31 @@
     const statusDiv = document.getElementById('status');
     const saveBtn = document.getElementById('saveBtn');
 
-    // Populate language dropdown
-    languages.forEach(lang => {
-      const option = document.createElement('option');
-      option.value = lang.code;
-      option.textContent = lang.name;
-      languageSelect.appendChild(option);
-    });
+    // Ensure elements exist before populating
+    if (languageSelect && translateLanguageSelect) {
+      // Populate language dropdown
+      languages.forEach(lang => {
+        const option = document.createElement('option');
+        option.value = lang.code;
+        option.textContent = lang.name;
+        languageSelect.appendChild(option);
+      });
 
-    // Populate translate language dropdown (same as recognition languages)
-    languages.forEach(lang => {
-      const option = document.createElement('option');
-      option.value = lang.code;
-      option.textContent = lang.name;
-      translateLanguageSelect.appendChild(option);
-    });
+      // Populate translate language dropdown (same as recognition languages)
+      languages.forEach(lang => {
+        const option = document.createElement('option');
+        option.value = lang.code;
+        option.textContent = lang.name;
+        translateLanguageSelect.appendChild(option);
+      });
 
-    // Set default language to Telugu
-    languageSelect.value = 'te-IN';
-    // Set default translate language to English
-    translateLanguageSelect.value = 'en-US';
+      // Set default language to Telugu
+      languageSelect.value = 'te-IN';
+      // Set default translate language to English
+      translateLanguageSelect.value = 'en-US';
+    } else {
+      console.error('Language select elements not found');
+    }
 
     let recognition;
     let isRecognizing = false;
