@@ -19,7 +19,7 @@
       display: flex;
       justify-content: center;
       /* CHANGE: Align to the start to allow scrolling */
-      align-items: flex-start; 
+      align-items: flex-start;
     }
     .container {
       background-color: #fff;
@@ -28,7 +28,7 @@
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
       width: min(90vw, 800px);
       /* CHANGE: Use auto-height to fit content properly */
-      min-height: auto; 
+      min-height: auto;
       height: auto;
       margin: 2rem auto;
       display: flex;
@@ -118,9 +118,9 @@
     #transcript {
       width: 100%;
       /* CHANGE: Reduced height from 500px to better fit on all screens */
-      height: 350px; 
+      height: 350px;
       /* NEW: Allows the textarea to grow if extra space is available */
-      flex-grow: 1; 
+      flex-grow: 1;
       font-size: 1.1rem;
       padding: 1rem;
       border: 1px solid #ddd;
@@ -154,7 +154,7 @@
     @media (max-width: 768px) {
       body {
         /* Ensure scrolling is enabled for the entire page */
-        display: block; 
+        display: block;
         overflow-y: auto;
         padding: 1rem;
       }
@@ -181,7 +181,7 @@
       }
       /* CHANGE: Reduced height from 60vh to 35vh for better visibility of footer */
       #transcript {
-        height: 35vh; 
+        height: 35vh;
       }
     }
   </style>
@@ -271,26 +271,31 @@
     const statusDiv = document.getElementById('status');
     const saveBtn = document.getElementById('saveBtn');
 
-    // Populate language dropdown
-    languages.forEach(lang => {
-      const option = document.createElement('option');
-      option.value = lang.code;
-      option.textContent = lang.name;
-      languageSelect.appendChild(option);
-    });
+    // Ensure elements exist before populating
+    if (languageSelect && translateLanguageSelect) {
+      // Populate language dropdown
+      languages.forEach(lang => {
+        const option = document.createElement('option');
+        option.value = lang.code;
+        option.textContent = lang.name;
+        languageSelect.appendChild(option);
+      });
 
-    // Populate translate language dropdown (same as recognition languages)
-    languages.forEach(lang => {
-      const option = document.createElement('option');
-      option.value = lang.code;
-      option.textContent = lang.name;
-      translateLanguageSelect.appendChild(option);
-    });
+      // Populate translate language dropdown (same as recognition languages)
+      languages.forEach(lang => {
+        const option = document.createElement('option');
+        option.value = lang.code;
+        option.textContent = lang.name;
+        translateLanguageSelect.appendChild(option);
+      });
 
-    // Set default language to Telugu
-    languageSelect.value = 'te-IN';
-    // Set default translate language to English
-    translateLanguageSelect.value = 'en-US';
+      // Set default language to Telugu
+      languageSelect.value = 'te-IN';
+      // Set default translate language to English
+      translateLanguageSelect.value = 'en-US';
+    } else {
+      console.error('Language select elements not found');
+    }
 
     let recognition;
     let isRecognizing = false;
@@ -298,6 +303,9 @@
     let audioContext;
     let filteredStream;
     let accumulatedTranscript = '';
+    let silenceTimeout = 300000; // 5 minutes in milliseconds
+    let silenceTimer;
+    let lastResultIndex = 0;
 
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       statusDiv.textContent = 'Sorry, your browser does not support Speech Recognition.';
@@ -315,6 +323,10 @@
         startBtn.disabled = true;
         stopBtn.disabled = false;
         statusDiv.textContent = 'Listening...';
+        // Start the silence timer
+        silenceTimer = setTimeout(() => {
+          recognition.stop();
+        }, silenceTimeout);
       };
 
       recognition.onerror = (event) => {
@@ -322,6 +334,12 @@
       };
 
       recognition.onend = () => {
+        // Clear the silence timer if it exists
+        if (silenceTimer) {
+          clearTimeout(silenceTimer);
+          silenceTimer = null;
+        }
+
         if (shouldStop) {
           isRecognizing = false;
           startBtn.disabled = false;
@@ -336,16 +354,35 @@
             filteredStream = null;
           }
         } else {
-          // Restart recognition if not manually stopped
-          recognition.start();
+          // If ended due to silence timeout, don't restart
+          if (silenceTimer === null) {
+            statusDiv.textContent = 'Stopped due to silence.';
+            isRecognizing = false;
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+          } else {
+            // Restart recognition if not manually stopped and not due to silence
+            recognition.start();
+          }
         }
       };
 
       recognition.onresult = (event) => {
+        // Clear the silence timer on any speech activity
+        if (silenceTimer) {
+          clearTimeout(silenceTimer);
+        }
+        // Restart the silence timer
+        silenceTimer = setTimeout(() => {
+          recognition.stop();
+        }, silenceTimeout);
+
         let interimTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
+        // Only process results from the last result index to avoid duplicates
+        for (let i = Math.max(lastResultIndex, event.resultIndex); i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
             accumulatedTranscript += event.results[i][0].transcript;
+            lastResultIndex = i + 1; // Update last processed index
           } else {
             interimTranscript += event.results[i][0].transcript;
           }
@@ -359,6 +396,7 @@
       recognition.lang = languageSelect.value;
       accumulatedTranscript = '';
       transcriptArea.value = '';
+      lastResultIndex = 0; // Reset the result index on start
 
       if (document.getElementById('noiseReduction').checked) {
         try {
@@ -463,12 +501,12 @@
     // Translation function using Google Translate API (unofficial)
     async function translateText(text, sourceLang, targetLang) {
       // NOTE: This endpoint is unofficial and may stop working without notice.
-      const url = https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)};
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
       try {
         const response = await fetch(url);
         const data = await response.json();
         // The translated text is usually the first element of the first array of the main array
-        return data[0][0][0]; 
+        return data[0][0][0];
       } catch (error) {
         console.error('Translation error:', error);
         return null;
@@ -499,7 +537,7 @@
       if (translatedText) {
         // Display the translated text in the transcript area
         transcriptArea.value = translatedText;
-        statusDiv.textContent = Translation from ${sourceLang.toUpperCase()} to ${targetLang.toUpperCase()} completed.;
+        statusDiv.textContent = `Translation from ${sourceLang.toUpperCase()} to ${targetLang.toUpperCase()} completed.`;
       } else {
         statusDiv.textContent = 'Translation failed. Please try again or check console for errors.';
       }
@@ -518,7 +556,7 @@
       if (!file) {
         return;
       }
-      
+
       // Cleanup previous streams/elements
       if (audioElement) {
         audioElement.pause();
@@ -560,17 +598,17 @@
         if ('audioTrack' in recognition) {
           recognition.audioTrack = fileStream.getAudioTracks()[0];
           statusDiv.textContent = 'Audio file loaded. Click Start to transcribe.';
-          
+
           // Connect the stream source to recognition and start playback (which feeds recognition)
           startBtn.addEventListener('click', () => {
               // The stream is started when the file is loaded, but playback starts here.
-              // Note: Direct file transcription via Web Speech API is experimental 
+              // Note: Direct file transcription via Web Speech API is experimental
               // and often not fully supported by browsers.
               if (source && fileAudioContext.state === 'suspended') {
                   fileAudioContext.resume();
               }
           }, { once: true }); // Only set this handler once per file load
-          
+
         } else {
           statusDiv.textContent = 'Audio playback ready. Note: Direct Speech-to-text from an uploaded audio file is not widely supported in this browser.';
         }
