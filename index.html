@@ -298,6 +298,8 @@
     let audioContext;
     let filteredStream;
     let accumulatedTranscript = '';
+    let lastResultIndex = 0;
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       statusDiv.textContent = 'Sorry, your browser does not support Speech Recognition.';
@@ -307,7 +309,7 @@
     } else {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       recognition = new SpeechRecognition();
-      recognition.continuous = true;
+      recognition.continuous = !isMobile; // Disable continuous on mobile to prevent auto-restart issues
       recognition.interimResults = true;
 
       recognition.onstart = () => {
@@ -335,21 +337,28 @@
             filteredStream.getTracks().forEach(track => track.stop());
             filteredStream = null;
           }
-        } else {
-          // Restart recognition if not manually stopped
+        } else if (!isMobile) {
+          // Restart recognition only on desktop if not manually stopped
           recognition.start();
+        } else {
+          // On mobile, do not auto-restart to prevent continuous auto-starts
+          isRecognizing = false;
+          startBtn.disabled = false;
+          stopBtn.disabled = true;
+          statusDiv.textContent = 'Session ended. Click Start to continue.';
         }
       };
 
       recognition.onresult = (event) => {
         let interimTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
+        for (let i = Math.max(event.resultIndex, lastResultIndex); i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
             accumulatedTranscript += event.results[i][0].transcript;
           } else {
             interimTranscript += event.results[i][0].transcript;
           }
         }
+        lastResultIndex = event.results.length;
         transcriptArea.value = accumulatedTranscript + interimTranscript;
       };
     }
@@ -463,12 +472,12 @@
     // Translation function using Google Translate API (unofficial)
     async function translateText(text, sourceLang, targetLang) {
       // NOTE: This endpoint is unofficial and may stop working without notice.
-      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+      const url = https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)};
       try {
         const response = await fetch(url);
         const data = await response.json();
         // The translated text is usually the first element of the first array of the main array
-        return data[0][0][0]; 
+        return data[0][0][0];
       } catch (error) {
         console.error('Translation error:', error);
         return null;
@@ -499,7 +508,7 @@
       if (translatedText) {
         // Display the translated text in the transcript area
         transcriptArea.value = translatedText;
-        statusDiv.textContent = `Translation from ${sourceLang.toUpperCase()} to ${targetLang.toUpperCase()} completed.`;
+        statusDiv.textContent = Translation from ${sourceLang.toUpperCase()} to ${targetLang.toUpperCase()} completed.;
       } else {
         statusDiv.textContent = 'Translation failed. Please try again or check console for errors.';
       }
