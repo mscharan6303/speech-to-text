@@ -9,3 +9,7 @@
 - [x] Reset accumulatedTranscript on start
 - [x] Test continuous listening until stop button is clicked
 - [x] Add internet connection check for translation feature
+- [x] Implement silence timeout (1 minute) to auto-stop recognition
+- [x] Reset silence timer on speech activity
+- [x] Update status messages for silence timeout
+- [x] Prevent restart after silence timeout
